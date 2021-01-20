@@ -491,6 +491,8 @@ AsToken         = "as"         !IdentifierPart
 BreakToken      = "break"      !IdentifierPart
 CalldataToken   = "calldata"   !IdentifierPart
 ConstantToken   = "constant"   !IdentifierPart
+ImmutableToken   = "immutable"  !IdentifierPart
+OverrideToken   = "override"  !IdentifierPart
 ContinueToken   = "continue"   !IdentifierPart
 ContractToken   = "contract"   !IdentifierPart
 ConstructorToken   = "constructor"   !IdentifierPart
@@ -812,17 +814,17 @@ StorageLocationSpecifier
   / CalldataToken
 
 StateVariableSpecifiers
-  = specifiers:(VisibilitySpecifier __ ConstantToken?){
-    return {
-      visibility: specifiers[0][0],
-      isconstant: specifiers[2] ? true: false 
-    }
-  }
-  / specifiers:(ConstantToken __ VisibilitySpecifier?){
-    return {
-      visibility: specifiers[2] ? specifiers[2][0] : null,
-      isconstant: true
-    }
+  = v:(VisibilitySpecifier / ImmutableToken / ConstantToken / OverrideToken){
+      if (v != null && v.type == "VisibilitySpecifier") {
+          return {
+            visibility: v[0]
+          }
+      }
+      if (v != null && v.type == "ConstantToken") {
+          return {
+            isconstant: true
+          }
+      }
   }
 
 StateVariableValue 
@@ -831,14 +833,14 @@ StateVariableValue
   }
 
 StateVariableDeclaration
-  = type:Type __ specifiers:StateVariableSpecifiers? __ id:Identifier __ value:StateVariableValue? __ EOS  
+  = type:Type __ v1:StateVariableSpecifiers? __ v2:StateVariableSpecifiers? __ v3:StateVariableSpecifiers? __ id:Identifier __ value:StateVariableValue? __ EOS  
   {
     return {
       type: "StateVariableDeclaration",
       name: id.name,
       literal: type,
-      visibility: specifiers? specifiers.visibility : null,
-      is_constant: specifiers? specifiers.isconstant : false,
+      visibility: v1? v1.visibility : v2? v2.visibility : v3? v3.visibility : null,
+      is_constant: v1? v1.isconstant : v2? v2.isconstant : v3? v3.isconstant : false,
       value: value,
       start: location().start.offset,
       end: location().end.offset
@@ -1501,7 +1503,7 @@ ContractStatement
   }
 
 InterfaceStatement
-  = InterfaceToken __ id:Identifier __
+  = abstract:AbstractToken? __ InterfaceToken __ id:Identifier __ is:IsStatement? __
     "{" __ body:SourceElements? __ "}"
   {
     return {
