@@ -272,6 +272,7 @@ Denomination
   / SzaboToken
   / FinneyToken
   / EtherToken
+  / GweiToken
   / SecondsToken
   / MinutesToken
   / HoursToken
@@ -521,6 +522,7 @@ ForToken        = "for"        !IdentifierPart
 FromToken       = "from"       !IdentifierPart
 FunctionToken   = "function"   !IdentifierPart
 GetToken        = "get"        !IdentifierPart
+GweiToken       = "gwei"       !IdentifierPart
 HexToken        = "hex"        !IdentifierPart
 HoursToken      = "hours"      !IdentifierPart
 IfToken         = "if"         !IdentifierPart
@@ -1976,6 +1978,7 @@ SourceUnit
   / LibraryStatement
   / StructDeclaration
   / ErrorDeclaration
+  / StateVariableDeclaration
 
 SourceElements
   = head:SourceElement tail:(__ SourceElement)* {
