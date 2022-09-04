@@ -135,6 +135,22 @@ describe("Should parse numbers with underscores", function() {
     });
 });
 
+describe("Should parse global constants", function() {
+    it("parses contracts with global constants", function() {
+        let all =  SolidityParser.parseFile("./test/doc_examples.sol", false);
+        let body = all.body;
+        for (let i = 0; i < body.length; i++) {
+            if(body[i].type === "StateVariableDeclaration" && body[i].name ==="const1") {
+                assert.isTrue(body[i].value.value === 1000000);
+            }
+            if(body[i].type === "StateVariableDeclaration" && body[i].name ==="const2") {
+                assert.isTrue(body[i].value.literal === 100);
+                assert.isTrue(body[i].value.denomination === "gwei");
+            }
+        }
+    });
+});
+
 describe("Parse comments", () => {
     function isAValidCommentToken(c, sc) {
         return (

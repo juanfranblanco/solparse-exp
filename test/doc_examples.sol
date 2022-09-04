@@ -47,6 +47,9 @@ import "SomeFile.sol" as SomeOtherFile;
 import * as SomeSymbol from "AnotherFile.sol";
 import {symbol1 as alias, symbol2} from "File.sol";
 
+uint256 constant const1 = 1_000_000;
+uint256 constant const2 = 100 gwei;
+
 interface i {
   function f();
 }
