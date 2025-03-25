@@ -413,6 +413,122 @@ contract LetsHaveLotsOfKeywordsInStateVariablesInNoParticularOrderBecauseIsLotsO
     uint override constant public  test9;
     uint override public  test10;
     uint override constant test11;
+
+        uint x;
+
+        uint override x;
+
+
+        uint public x;
+
+        uint public override x;
+
+        uint internal x;
+
+        uint internal override x;
+
+        uint private x;
+
+        uint private override x;
+
+        uint override public x;
+
+        uint override internal x;
+
+        uint override private x;
+
+        uint constant x;
+
+        uint constant override x;
+
+        uint constant public x;
+
+        uint constant public override x;
+
+        uint constant internal x;
+
+        uint constant internal override x;
+
+        uint constant private x;
+
+        uint constant private override x;
+
+        uint public constant x;
+
+        uint public constant override x;
+
+        uint internal constant x;
+
+        uint internal constant override x;
+
+        uint private constant x;
+
+        uint private constant override x;
+
+        uint override constant x;
+
+
+        uint immutable x;
+
+        uint immutable override x;
+
+        uint immutable public x;
+
+        uint immutable public override x;
+
+        uint immutable internal x;
+
+        uint immutable internal override x;
+
+        uint immutable private x;
+
+        uint immutable private override x;
+
+        uint public immutable x;
+
+        uint public immutable override x;
+
+        uint internal immutable x;
+
+        uint internal immutable override x;
+
+        uint private immutable x;
+
+        uint private immutable override x;
+
+        uint override immutable x;
+
+        uint transient x;
+
+        uint transient override x;
+
+        uint transient public x;
+
+        uint transient public override x;
+
+        uint transient internal x;
+
+        uint transient internal override x;
+
+        uint transient private x;
+
+        uint transient private override x;
+
+        uint public transient x;
+
+        uint public transient override x;
+
+        uint internal transient x;
+
+        uint internal transient override x;
+
+        uint private transient x;
+
+        uint private transient override x;
+
+        uint override transient x;
+
+
 }
 
 library GetCode {
@@ -672,7 +788,28 @@ contract UsesNewConstructor {
 }
 
 contract Test {
+  
+   function test1() virtual;
+   function test2() virtual public returns (uint) { return 1; }
+    modifier myMod() override { }
     uint foo = 1;
+
+    uint transient x;
+    uint public transient x = 1;
+    uint public immutable override test = 1;
+    uint virtual public x;
+    uint transient override(A, B) virtual x;
+    uint public virtual override immutable x;
+
+
+
+
+
+
+    uint public override x;
+
+    uint transient override(A, B) x;
+
     function test() public {
         foo += 1;
         try this.test() {
@@ -680,7 +817,13 @@ contract Test {
         }
         catch {}
     }
+    function test() override(Base1, Base2) { }
+    function test20() {
+      try myFunc() returns (uint) { return 1; } catch Error(uint x) { revert(x); } catch { }
+    }
 }
+
+error MyError(uint256 a, address b);
 
 
 

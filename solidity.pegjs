@@ -559,7 +559,8 @@ AsToken         = "as"         !IdentifierPart
 BreakToken      = "break"      !IdentifierPart
 CalldataToken   = "calldata"   !IdentifierPart
 ConstantToken   = "constant"   !IdentifierPart
-ImmutableToken   = "immutable"  !IdentifierPart
+ImmutableToken   = "immutable" !IdentifierPart
+TransientToken  = "transient"  !IdentifierPart
 ContinueToken   = "continue"   !IdentifierPart
 ContractToken   = "contract"   !IdentifierPart
 ConstructorToken   = "constructor"   !IdentifierPart
@@ -584,8 +585,10 @@ GlobalToken     = "global"     !IdentifierPart
 HexToken        = "hex"        !IdentifierPart
 HoursToken      = "hours"      !IdentifierPart
 IfToken         = "if"         !IdentifierPart
-TryToken        = "try"       !IdentifierPart
-CatchToken      = "catch"       !IdentifierPart
+TryToken        = "try"        !IdentifierPart
+CatchToken      = "catch"      !IdentifierPart
+ErrorCatchToken = "Error"      !IdentifierPart
+PanicCatchToken = "Panic"      !IdentifierPart
 IsToken         = "is"         !IdentifierPart
 IndexedToken    = "indexed"    !IdentifierPart
 ImportToken     = "import"     !IdentifierPart
@@ -928,58 +931,88 @@ StorageLocationSpecifier
   / MemoryToken
   / CalldataToken
 
-StateVariableSpecifiers
- = constant:(ConstantToken/ImmutableToken) __ visibility:(VisibilitySpecifier) __? override:(OverrideToken)? __ {
-    return {
-      visibility: visibility? visibility[0]: null,
-      isconstant: constant ? (constant[0] === "constant" ? true: false) : false,
-      isimmutable: constant? (constant[0] === "immutable" ? true: false) : false,
-      isoverride: override?  true: false
+OverrideSpecifier
+  = OverrideToken __ "(" __ head:Type __ tail:(__ "," __ Type)* __ ")" {
+      return {
+        type: "OverrideSpecifier",
+        overrides: buildList(head, tail, 3),
+        start: location().start.offset,
+        end: location().end.offset
+      };
     }
-   } 
-   /
-  constant:(ConstantToken/ImmutableToken) __? override:(OverrideToken)? __? visibility:(VisibilitySpecifier)? __ {
-    return {
-      visibility: visibility? visibility[0]: null,
-      isconstant: constant ? (constant[0] === "constant" ? true: false) : false,
-      isimmutable: constant? (constant[0] === "immutable" ? true: false) : false,
-      isoverride: override?  true: false
+  / OverrideToken {
+      return {
+        type: "OverrideSpecifier",
+        overrides: [],
+        start: location().start.offset,
+        end: location().end.offset
+      };
     }
-   } 
-   /
-   override:(OverrideToken) __ constant:(ConstantToken/ImmutableToken) __? visibility:(VisibilitySpecifier)? __ {
-    return {
-      visibility: visibility? visibility[0]: null,
-      isconstant: constant ? (constant[0] === "constant" ? true: false) : false,
-      isimmutable: constant? (constant[0] === "immutable" ? true: false) : false,
-      isoverride: override?  true: false
-    }
-   } /
-   override:(OverrideToken) __? visibility:(VisibilitySpecifier)? __? constant:(ConstantToken/ImmutableToken)? __ {
-    return {
-      visibility: visibility? visibility[0]: null,
-      isconstant: constant ? (constant[0] === "constant" ? true: false) : false,
-      isimmutable: constant? (constant[0] === "immutable" ? true: false) : false,
-      isoverride: override?  true: false
-    }
-   } /
-   visibility:(VisibilitySpecifier) __ override:(OverrideToken) __? constant:(ConstantToken/ImmutableToken)? __ {
-    return {
-       visibility: visibility? visibility[0]: null,
-      isconstant: constant ? (constant[0] === "constant" ? true: false) : false,
-      isimmutable: constant? (constant[0] === "immutable" ? true: false) : false,
-      isoverride: override?  true: false
-    }
-   }/
-   visibility:(VisibilitySpecifier) __? constant:(ConstantToken/ImmutableToken)? __? override:(OverrideToken)? __ {
-    return {
-      visibility: visibility? visibility[0]: null,
-      isconstant: constant ? (constant[0] === "constant" ? true: false) : false,
-      isimmutable: constant? (constant[0] === "immutable" ? true: false) : false,
-      isoverride: override?  true: false
-    }
-  } 
 
+VirtualSpecifier
+  = "virtual" !IdentifierPart {
+      return {
+        type: "VirtualSpecifier",
+        value: "virtual",
+        start: location().start.offset,
+        end: location().end.offset
+      };
+    }
+
+
+StateVariableSpecifiers
+  = modifiers:( 
+      ( ConstantToken 
+      / ImmutableToken 
+      / TransientToken 
+      / VisibilitySpecifier 
+      / OverrideSpecifier 
+      / VirtualSpecifier 
+      ) __ 
+    )* {
+      let visibility = null;
+      let isconstant = false;
+      let isimmutable = false;
+      let istransient = false;
+      let isoverride = false;
+      let overrides = [];
+      let isvirtual = false;
+
+      for (const mod of modifiers) {
+        const token = mod[0];  // First element of the match
+        switch (true) {
+          case token === "constant":
+            isconstant = true;
+            break;
+          case token === "immutable":
+            isimmutable = true;
+            break;
+          case token === "transient":
+            istransient = true;
+            break;
+          case token === "public" || token === "internal" || token === "private":
+            visibility = token;
+            break;
+          case token.type === "OverrideSpecifier":
+            isoverride = true;
+            overrides = token.overrides;
+            break;
+          case token.type === "VirtualSpecifier":
+            isvirtual = true;
+            break;
+        }
+      }
+
+      return {
+        visibility,
+        isconstant,
+        isimmutable,
+        istransient,
+        isoverride,
+        overrides,
+        isvirtual
+      };
+    }
 
 StateVariableValue 
   = "=" __ expression:Expression {
@@ -992,16 +1025,19 @@ StateVariableDeclaration
     return {
       type: "StateVariableDeclaration",
       name: id.name,
-      id : id,
+      id: id,
       literal: type,
-      visibility: specifiers? specifiers.visibility : null,
-      is_constant: specifiers? specifiers.isconstant : false,
-      is_immutable: specifiers? specifiers.isimmutable : false,
-      is_override: specifiers? specifiers.isoverride: false,
+      visibility: specifiers ? specifiers.visibility : null,
+      is_constant: specifiers ? specifiers.isconstant : false,
+      is_immutable: specifiers ? specifiers.isimmutable : false,
+      is_transient: specifiers ? specifiers.istransient : false,
+      is_override: specifiers ? specifiers.isoverride : false,
+      overrides: specifiers ? specifiers.overrides : [],
+      is_virtual: specifiers ? specifiers.isvirtual : false,
       value: value,
       start: location().start.offset,
       end: location().end.offset
-    }
+    };
   }
 
 FileLevelConstant
@@ -1446,6 +1482,7 @@ ExpressionStatement
       };
     } 
 
+
 TryStatement 
   = TryToken __ tryExpression: Expression tail:(((".") / (  __ "=" __ ) / ( __ "=" __ NewToken __)) Identifier?)* __ 
     tryStatement:Statement __
@@ -1481,7 +1518,7 @@ TryStatement
       };
     }
    
-    
+
 
 CatchStatements
   = head:CatchStatement tail:(__ CatchStatement)* {
@@ -1489,24 +1526,44 @@ CatchStatements
     }
 
 CatchStatement
-  = CatchToken __ "(" __ param:InformalParameterList __ ")" __ body:Block {
+  = CatchToken __ ErrorCatchToken __ "(" __ params:InformalParameterList? __ ")" __ body:Block {
       return {
         type: "CatchClause",
-        param: param,
-        body: body
+        paramIdentifier: "Error",
+        param: params != null && params[2] != null ? params[2] : null,
+        body: body,
+        start: location().start.offset,
+        end: location().end.offset
       };
-    } /
-    CatchToken __ body:Block {
+    }
+  / CatchToken __ PanicCatchToken __ "(" __ params:InformalParameterList? __ ")" __ body:Block {
       return {
         type: "CatchClause",
-        body: body
+        paramIdentifier: "Panic",
+        param: params != null && params[2] != null ? params[2] : null,
+        body: body,
+        start: location().start.offset,
+        end: location().end.offset
       };
-    } /
- CatchToken __ "Error" __ "(" __ param:InformalParameterList __ ")" __ body:Block {
+    }
+  / CatchToken __ "(" __ params:InformalParameterList? __ ")" __ body:Block {
       return {
         type: "CatchClause",
-        param: param,
-        body: body
+        paramIdentifier: null,
+        param: params != null && params[2] != null ? params[2] : null,
+        body: body,
+        start: location().start.offset,
+        end: location().end.offset
+      };
+    }
+  / CatchToken __ body:Block {
+      return {
+        type: "CatchClause",
+        paramIdentifier: null,
+        param: null,
+        body: body,
+        start: location().start.offset,
+        end: location().end.offset
       };
     }
     
@@ -1574,6 +1631,7 @@ PragmaStatement
   }
 
 ImportStatement
+ /* import "file" [as alias]? ; */
   = ImportToken __ from:StringLiteral __ alias:(AsToken __ Identifier)? __ EOS
   {
     return {
@@ -1585,6 +1643,7 @@ ImportStatement
       end: location().end.offset
     }
   }
+  /*  import * as alias from "file"; */
   / ImportToken __ symbol:GlobalSymbol __ FromToken __ from:StringLiteral __ EOS
   {
     return {
@@ -1595,6 +1654,18 @@ ImportStatement
       end: location().end.offset
     }
   }
+  /* import Foo [as Bar] from "file"; */
+  / ImportToken __ single:Symbol __ FromToken __ from:StringLiteral __ EOS
+  {
+    return {
+      type:  "ImportStatement",
+      from:  from.value,
+      symbols: [ single ],
+      start: location().start.offset,
+      end:   location().end.offset
+    };
+  }
+  /* import { x, y as z } from "file"; */
   / ImportToken __ "{" __ symbols:SymbolList __ "}" __ FromToken __ from:StringLiteral __ EOS
   {
     return {
@@ -1606,16 +1677,24 @@ ImportStatement
     }
   }
 
-UsingStatementOperator =
-  library:Type __ AsToken __ operator:UserDefinableOperator __
+  UsingStatementOperator
+  = library:Type maybeOp:(__ AsToken __ op:UserDefinableOperator)?
   {
+    /* maybeOp is either null or something like:
+       [__, AsToken, __, op:UserDefinableOperator] */
+
+    const operator = (maybeOp !== null)
+      ? maybeOp[3] // the actual UserDefinableOperator object
+      : null;
+
     return {
-      type: "UsingStatementOperator",
+      type:    "UsingStatementOperator",
       library: library,
-      for: operator,
-      start: location().start.offset,
-      end: location().end.offset
-    }
+      // keep the same output property "for" if you like, or rename to "operator"
+      for:     operator,
+      start:   location().start.offset,
+      end:     location().end.offset
+    };
   }
   
 
@@ -1746,6 +1825,7 @@ GlobalSymbol
       end: location().end.offset
     }
   }
+
 
 IterationStatement
   = DoToken __
@@ -1898,16 +1978,16 @@ IsStatement
 /* ----- A.5 Functions and Programs ----- */
 
 ErrorDeclaration
-  = ErrorToken __ fnname:FunctionName __ isanonymous:AnonymousToken? __ EOS
+  = ErrorToken __ fnname:FunctionName __ EOS
   {
     return {
       type: "ErrorDeclaration",
       name: fnname.name,
+      id: fnname.id,
       params: fnname.params,
-      is_anonymous: isanonymous != null,
       start: location().start.offset,
       end: location().end.offset
-    }
+    };
   }
 
 TypeDeclaration
@@ -1925,26 +2005,28 @@ TypeDeclaration
 
 
 EventDeclaration
-  = EventToken __ fnname:FunctionName __ isanonymous:AnonymousToken? __ EOS
-  {
-    return {
-      type: "EventDeclaration",
-      name: fnname.name,
-      params: fnname.params,
-      is_anonymous: isanonymous != null,
-      start: location().start.offset,
-      end: location().end.offset
+  = EventToken __ id:Identifier __ "(" __ params:EventParameterList? __ ")" __ isanonymous:AnonymousToken? __ EOS
+    {
+      return {
+        type: "EventDeclaration",
+        name: id.name,
+        id: id,
+        params: params != null ? params : [],
+        is_anonymous: isanonymous != null,
+        start: location().start.offset,
+        end: location().end.offset
+      };
     }
-  }
 
 ModifierDeclaration
-  = ModifierToken __ fnname:ModifierName __ names:ModifierNameList? __ body:FunctionBody
+  = ModifierToken __ fnname:ModifierName __ names:ModifierNameList? __ modifiers:(__ OverrideSpecifier)* __ body:FunctionBody
     {
       return {
         type: "ModifierDeclaration",
         name: fnname.name,
         params: fnname.params,
-        modifiers: names,
+        modifiers: names != null ? names : [],
+        overrideModifiers: modifiers != null ? extractList(modifiers, 1) : [],
         body: body,
         start: location().start.offset,
         end: location().end.offset
@@ -1952,14 +2034,15 @@ ModifierDeclaration
     }
 
 FunctionDeclaration
-  = FunctionToken __ fnname:FunctionName __ args:ModifierArgumentList? __ returns:ReturnsDeclarations __ body:FunctionBody
+  = FunctionToken __ fnname:FunctionName __ args:ModifierArgumentList? __ modifiers:FunctionTypeModifierList? __ returns:ReturnsDeclarations __ body:FunctionBody
     {
       return {
         type: "FunctionDeclaration",
         name: fnname.name,
-        id: fnname,
+        id: fnname.id,
         params: fnname.params,
-        modifiers: args,
+        modifiers: args != null ? args : [],
+        functionModifiers: modifiers != null ? modifiers : [],
         returnParams: returns,
         body: body,
         is_abstract: false,
@@ -1967,14 +2050,15 @@ FunctionDeclaration
         end: location().end.offset
       };
     }
-  / FunctionToken __ fnname:FunctionName __ args:ModifierArgumentList? __ returns:ReturnsDeclarations __ EOS
+  / FunctionToken __ fnname:FunctionName __ args:ModifierArgumentList? __ modifiers:FunctionTypeModifierList? __ returns:ReturnsDeclarations __ EOS
     {
       return {
         type: "FunctionDeclaration",
         name: fnname.name,
-        id: fnname,
+        id: fnname.id,
         params: fnname.params,
-        modifiers: args,
+        modifiers: args != null ? args : [],
+        functionModifiers: modifiers != null ? modifiers : [],
         returnParams: returns,
         body: null,
         is_abstract: true,
@@ -2076,6 +2160,7 @@ ModifierName
   {
     return {
       type: "ModifierName",
+      id: id,
       name: id != null ? id.name : null,
       params: params != null ? params[2] : [],
       start: location().start.offset,
@@ -2117,9 +2202,10 @@ ModifierArgumentList
     }
 
 FunctionTypeModifierList
-  = head:FunctionTypeModifier tail:( __ FunctionTypeModifier)* {
+  = head:(FunctionTypeModifier / OverrideSpecifier / VirtualSpecifier) tail:( __ (FunctionTypeModifier / OverrideSpecifier / VirtualSpecifier))* {
       return buildList(head, tail, 1);
     }
+
 
 ModifierNameWithAlias
   = alias:(Identifier ".")* modifier:ModifierName {
@@ -2157,6 +2243,23 @@ InformalParameter
 
 InformalParameterList
   = head:(InformalParameter / Literal) tail:( __ "," __ (InformalParameter / Literal))* {
+      return buildList(head, tail, 3);
+    }
+
+EventParameter
+  = type:Type __ isindexed:IndexedToken? __ id:Identifier? {
+      return {
+        type: "EventParameter",
+        literal: type,
+        id: id ? id.name : null,
+        is_indexed: isindexed != null,
+        start: location().start.offset,
+        end: location().end.offset
+      };
+    }
+
+EventParameterList
+  = head:EventParameter tail:( __ "," __ EventParameter)* {
       return buildList(head, tail, 3);
     }
 

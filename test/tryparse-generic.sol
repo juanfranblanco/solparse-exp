@@ -2,7 +2,7 @@
 contract XXXToken is ERC20, Ownable 
 {
 
- function lockLotteryContractA()
+ function lockLotteryContractA() public 
  {
         try IERC1155Receiver(to).onERC1155Received(operator, from, id, amount, data) returns (bytes4 response) {
                 if (response != IERC1155Receiver(to).onERC1155Received.selector) {
