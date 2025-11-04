@@ -1059,3 +1059,19 @@ contract NamedMappingParams {
 // solc 0.8.19, user defined operators
 using { add as + } for Fixed18 global;
 using { add as +, sub as - } for Fixed18 global;
+
+error InsufficientBalance(uint256 available, uint256 required);
+
+// This will only compile via IR
+contract TestToken {
+    mapping(address => uint) balance;
+    function transferWithRequireError(address to, uint256 amount) public {
+        require(
+            balance[msg.sender] >= amount,
+            InsufficientBalance(balance[msg.sender], amount)
+        );
+        balance[msg.sender] -= amount;
+        balance[to] += amount;
+    }
+    // ...
+}

@@ -1,7 +1,7 @@
 {
   "name": "solparse-exp-jb",
-  "version": "4.0.0",
-  "description": "PEG.js Solidity parser for Javascript, exp as in experimental to continue to support latest solidity features and work with vscode solidity",
+  "version": "4.1.0",
+  "description": "PEG.js Solidity parser for Javascript, 'exp' as in experimental to continue to support latest solidity features and work with vscode solidity",
   "main": "index.js",
   "scripts": {
     "prepublish": "npm run build",

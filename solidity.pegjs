@@ -232,6 +232,7 @@ Keyword
   / IfToken
   / ImportToken
   / NewToken
+  / RequireToken
   / PragmaToken
   / ReturnToken
   / ReturnsToken
@@ -605,6 +606,7 @@ PrivateToken    = "private"    !IdentifierPart
 PragmaToken     = "pragma"     !IdentifierPart
 PublicToken     = "public"     !IdentifierPart
 ReturnToken     = "return"     !IdentifierPart
+RequireToken    = "require"    !IdentifierPart
 ReturnsToken    = "returns"    !IdentifierPart
 SecondsToken    = "seconds"    !IdentifierPart
 SetToken        = "set"        !IdentifierPart
@@ -651,6 +653,7 @@ Comma
 PrimaryExpression
   = ThisToken { return { type: "ThisExpression", start: location().start.offset, end: location().end.offset }; }
   / SuperToken { return { type: "SuperExpression", start: location().start.offset, end: location().end.offset }; }
+  / RequireCallExpression
   / Identifier
   / Literal
   / ArrayLiteral
@@ -664,6 +667,35 @@ PrimaryExpression
       expression.end = location().end.offset;
 
       return expression;
+    }
+
+RequireCallExpression
+  = RequireToken __ "(" __ condition:AssignmentExpression __ "," __ customError:AssignmentExpression __ ")" {
+      return {
+        type: "RequireCallExpression",
+        condition: condition,
+        customError: customError,
+        start: location().start.offset,
+        end: location().end.offset
+      };
+    }
+  / RequireToken __ "(" __ condition:AssignmentExpression __ "," __ message:AssignmentExpression? __ ")" {
+      return {
+        type: "RequireCallExpression", 
+        condition: condition,
+        message: message,
+        start: location().start.offset,
+        end: location().end.offset
+      };
+    }
+  / RequireToken __ "(" __ condition:AssignmentExpression __ ")" {
+      return {
+        type: "RequireCallExpression",
+        condition: condition,
+        message: null,
+        start: location().start.offset,
+        end: location().end.offset
+      };
     }
 
 ArrayLiteral
